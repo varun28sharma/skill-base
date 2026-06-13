@@ -2,8 +2,15 @@ const videoService = require('../services/videoService');
 const { sendSuccess } = require('../utils/response');
 
 const create = async (req, res) => {
-  const { title, description, category, file_path } = req.body;
-  const video = await videoService.createVideo({ title, description, category, file_path });
+  const { title, description, category } = req.body;
+  if (!req.file) {
+    const err = new Error('Video file is required');
+    err.status = 400;
+    throw err;
+  }
+  const file_path = `/uploads/${req.file.filename}`;
+  const loggedInUserId = req.user.id;
+  const video = await videoService.createVideo({ title, description, category, file_path }, loggedInUserId);
   return sendSuccess(res, video, 201);
 };
 

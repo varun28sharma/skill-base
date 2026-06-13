@@ -67,10 +67,19 @@ const mapVideo = (video, baseUrl) => {
     isLiked: video.isLiked || false,
     isBookmarked: video.isBookmarked || false,
     comments: Array.isArray(video.comments) ? video.comments.map(mapComment) : [],
-    creator: {
+    creator: video.creator ? {
+      id: video.creator.id,
+      name: video.creator.name,
+      username: video.creator.username,
+      avatar: video.creator.avatar,
+      isFollowing: video.creator.isFollowing || false,
+      followersCount: video.creator.followersCount || '1.2K'
+    } : {
+      id: '00000000-0000-0000-0000-000000000000',
       name: 'Instructor',
       username: 'german_instructor',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=60',
+      isFollowing: false,
       followersCount: '15K'
     },
     music: `Original Audio - German ${video.category || 'Lesson'}`

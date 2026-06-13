@@ -4,9 +4,10 @@ const videoController = require('../controllers/videoController');
 const interactionController = require('../controllers/interactionController');
 const { requireAuth, optionalAuth } = require('../middlewares/authMiddleware');
 const asyncHandler = require('../utils/asyncHandler');
+const upload = require('../middlewares/upload');
 
 // Video Endpoints
-router.post('/', requireAuth, asyncHandler(videoController.create));
+router.post('/', requireAuth, upload.single('video'), asyncHandler(videoController.create));
 router.get('/', optionalAuth, asyncHandler(videoController.getAll));
 router.get('/:id', optionalAuth, asyncHandler(videoController.getById));
 

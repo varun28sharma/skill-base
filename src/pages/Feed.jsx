@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchVideos, setCurrentIndex, createVideo } from '../redux/videosSlice';
+import { fetchNetwork, toggleFollowUser, acceptFollowRequest, rejectFollowRequest } from '../redux/networkSlice';
 import VideoCard from '../components/VideoCard';
 import NavBar from '../components/NavBar';
 import Skeleton from '../components/Skeleton';
+import QuickAccessPanel from '../components/QuickAccessPanel';
 import { logout } from '../redux/authSlice';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,39 +26,86 @@ import {
   ChevronDown,
   UserPlus,
   Play,
-  X
+  X,
+  Bell,
+  UploadCloud
 } from 'lucide-react';
 
 export default function Feed() {
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'saved' | 'profile'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'explore' | 'profile'
   const [profileActiveTab, setProfileActiveTab] = useState('grid'); // 'grid' | 'reels' | 'saved'
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+  const [isFollowingOpen, setIsFollowingOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Upload Form States
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDesc, setUploadDesc] = useState('');
   const [uploadCategory, setUploadCategory] = useState('German');
-  const [uploadFilePath, setUploadFilePath] = useState('/uploads/Introduction_German.mp4');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('video/')) {
+      setSelectedFile(file);
+    } else {
+      alert('Please select a valid video file.');
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('video/')) {
+      setSelectedFile(file);
+    } else {
+      alert('Please select a valid video file.');
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleUploadSubmit = (e) => {
     e.preventDefault();
-    if (!uploadTitle.trim() || !uploadDesc.trim()) return;
+    if (!uploadTitle.trim() || !uploadDesc.trim() || !selectedFile) {
+      alert('Please fill out all fields and select a video file.');
+      return;
+    }
 
     dispatch(createVideo({
       title: uploadTitle.trim(),
       description: uploadDesc.trim(),
       category: uploadCategory,
-      file_path: uploadFilePath
+      file: selectedFile
     }))
       .unwrap()
       .then(() => {
         setIsUploadOpen(false);
         setUploadTitle('');
         setUploadDesc('');
+        setUploadCategory('German');
+        setSelectedFile(null);
         // Snap back to home feed and start from top
         setActiveTab('home');
         dispatch(setCurrentIndex(0));
@@ -72,6 +121,15 @@ export default function Feed() {
   const { videos, currentIndex, loading } = useSelector((state) => state.videos);
   const bookmarkedVideos = useSelector((state) => state.interactions.bookmarkedVideos);
   const user = useSelector((state) => state.auth.user);
+  const { followers = [], following = [], suggested = [], requests = [], followStatuses = {} } = useSelector((state) => state.network || {});
+
+  const getFollowState = (userId, defaultIsFollowing) => {
+    const status = followStatuses[userId];
+    if (status) return status; // 'following' | 'requested' | 'none'
+    if (defaultIsFollowing === 'requested') return 'requested';
+    if (defaultIsFollowing === true) return 'following';
+    return 'none';
+  };
 
   useEffect(() => {
     // Fetch videos if not loaded
@@ -79,6 +137,12 @@ export default function Feed() {
       dispatch(fetchVideos());
     }
   }, [dispatch, videos.length]);
+
+  useEffect(() => {
+    if (user) {
+      dispatch(fetchNetwork());
+    }
+  }, [dispatch, user]);
 
   // Handle scroll snap index detection & header visibility
   const handleScroll = () => {
@@ -112,9 +176,6 @@ export default function Feed() {
   // Helper to filter videos based on current tab, active category and search query
   const getDisplayVideos = () => {
     let list = videos;
-    if (activeTab === 'saved') {
-      list = videos.filter((v) => !!bookmarkedVideos[v.id]);
-    }
 
     // Apply active category filter
     if (activeCategory && activeCategory !== 'All') {
@@ -146,7 +207,11 @@ export default function Feed() {
         (v) =>
           v.title.toLowerCase().includes(q) ||
           v.category.toLowerCase().includes(q) ||
-          v.description.toLowerCase().includes(q)
+          v.description.toLowerCase().includes(q) ||
+          (v.creator && (
+            v.creator.name.toLowerCase().includes(q) ||
+            v.creator.username.toLowerCase().includes(q)
+          ))
       );
     }
 
@@ -179,24 +244,12 @@ export default function Feed() {
 
     switch (activeTab) {
       case 'home':
-      case 'saved':
         if (displayVideos.length === 0) {
           return (
             <div style={styles.emptyContainer}>
               <Bookmark size={48} color="rgba(255,255,255,0.2)" style={{ marginBottom: '16px' }} />
-              <h3 style={styles.emptyTitle}>
-                {activeTab === 'saved' ? 'No Saved Lessons' : 'No lessons found'}
-              </h3>
-              <p style={styles.emptyDesc}>
-                {activeTab === 'saved'
-                  ? 'Bookmark vertical learning shorts to review them here later.'
-                  : 'Check back later for new uploads.'}
-              </p>
-              {activeTab === 'saved' && (
-                <button onClick={() => setActiveTab('home')} style={styles.exploreBtn}>
-                  Browse Home Feed
-                </button>
-              )}
+              <h3 style={styles.emptyTitle}>No lessons found</h3>
+              <p style={styles.emptyDesc}>Check back later for new uploads.</p>
             </div>
           );
         }
@@ -218,11 +271,245 @@ export default function Feed() {
           </div>
         );
 
+      case 'explore': {
+        // Explore view displaying search input, quick category pills, and a 2-column grid of lessons
+        return (
+          <div style={styles.exploreView} className="comment-list-scroll">
+            <style>{`
+              .explore-grid-card {
+                position: relative;
+                aspect-ratio: 9 / 16;
+                background-color: #111111;
+                border-radius: 12px;
+                cursor: pointer;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                transition: transform 0.2s ease, border-color 0.2s ease;
+              }
+              .explore-grid-card:hover {
+                transform: translateY(-2px);
+                border-color: rgba(108, 99, 255, 0.4);
+              }
+              .explore-grid-video {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+              }
+              .explore-card-info {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 10px;
+                background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0) 100%);
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+              }
+              .explore-card-title {
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1.3;
+                text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.8);
+                display: -webkit-box;
+                WebkitLineClamp: 2;
+                WebkitBoxOrient: 'vertical';
+                overflow: hidden;
+              }
+              .explore-card-category {
+                font-size: 8px;
+                font-weight: 600;
+                color: #ffffff;
+                background-color: rgba(108, 99, 255, 0.8);
+                padding: 2px 6px;
+                borderRadius: 4px;
+                width: fit-content;
+                text-transform: uppercase;
+              }
+            `}</style>
+
+            <div style={styles.exploreHeader}>
+              <h2 style={styles.exploreTitle}>Explore Lessons</h2>
+              <div style={styles.exploreSearchContainer}>
+                <Search size={16} color="rgba(255, 255, 255, 0.4)" style={{ marginRight: '8px' }} />
+                <input
+                  type="text"
+                  placeholder="Search categories, titles..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={styles.exploreSearchInput}
+                />
+              </div>
+            </div>
+
+            {suggested && suggested.length > 0 && (
+              <div style={{
+                padding: '0 16px 16px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}>
+                <h3 style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: 'rgba(255,255,255,0.5)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  margin: 0
+                }}>Suggested Creators</h3>
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  paddingBottom: '4px',
+                }} className="comment-list-scroll">
+                  {suggested.map((sugUser) => {
+                    const fState = getFollowState(sugUser.id, sugUser.is_following);
+                    const isSugFollowing = fState === 'following';
+                    const isSugRequested = fState === 'requested';
+                    const btnLabel = isSugFollowing ? 'Following' : (isSugRequested ? 'Requested' : 'Follow');
+                    return (
+                      <div key={sugUser.id} style={{
+                        flexShrink: 0,
+                        width: '120px',
+                        backgroundColor: '#0f0f0f',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        padding: '12px 10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: '4px',
+                      }}>
+                        <img src={sugUser.avatar} alt={sugUser.username} style={{
+                          width: '50px',
+                          height: '50px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          marginBottom: '4px',
+                          border: '1.5px solid rgba(108, 99, 255, 0.4)',
+                        }} />
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%',
+                        }}>{sugUser.name}</span>
+                        <span style={{
+                          fontSize: '9px',
+                          color: 'rgba(255,255,255,0.4)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%',
+                          marginBottom: '4px',
+                        }}>@{sugUser.username}</span>
+                        <button
+                          onClick={() => dispatch(toggleFollowUser(sugUser.id))}
+                          style={{
+                            width: '100%',
+                            borderRadius: '6px',
+                            padding: '6px 0',
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            color: isSugFollowing ? 'rgba(255,255,255,0.6)' : (isSugRequested ? 'rgba(255,255,255,0.5)' : '#ffffff'),
+                            cursor: 'pointer',
+                            outline: 'none',
+                            transition: 'all 0.2s ease',
+                            background: isSugFollowing 
+                              ? 'rgba(255,255,255,0.08)' 
+                              : (isSugRequested 
+                                  ? 'rgba(255,255,255,0.05)' 
+                                  : 'linear-gradient(135deg, #6c63ff 0%, #ff4757 100%)'),
+                            border: (isSugFollowing || isSugRequested) ? '1px solid rgba(255,255,255,0.1)' : 'none'
+                          }}
+                        >
+                          {btnLabel}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={styles.exploreCategoriesScroll} className="comment-list-scroll">
+              {['All', 'German', 'DSA', 'Web Dev', 'AI', 'System Design', 'React', 'Python'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setActiveCategory(cat);
+                  }}
+                  style={{
+                    ...styles.exploreCategoryBtn,
+                    background: activeCategory === cat 
+                      ? 'linear-gradient(135deg, #6c63ff 0%, #ff4757 100%)' 
+                      : '#161616',
+                    borderColor: activeCategory === cat ? 'transparent' : 'rgba(255, 255, 255, 0.08)',
+                    color: '#ffffff',
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {displayVideos.length === 0 ? (
+              <div style={styles.exploreEmpty}>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>
+                  No lessons match your search or filter.
+                </span>
+              </div>
+            ) : (
+              <div style={styles.exploreGrid}>
+                {displayVideos.map((video) => {
+                  const origIndex = videos.findIndex((v) => v.id === video.id);
+                  return (
+                    <div
+                      key={video.id}
+                      onClick={() => {
+                        setActiveCategory('All');
+                        dispatch(setCurrentIndex(origIndex));
+                        setActiveTab('home');
+                      }}
+                      onMouseEnter={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video');
+                        if (videoEl) videoEl.play().catch(() => {});
+                      }}
+                      onMouseLeave={(e) => {
+                        const videoEl = e.currentTarget.querySelector('video');
+                        if (videoEl) {
+                          videoEl.pause();
+                          videoEl.currentTime = 0;
+                        }
+                      }}
+                      className="explore-grid-card"
+                    >
+                      <video src={video.url} className="explore-grid-video" muted playsInline />
+                      <div className="explore-card-info">
+                        <span className="explore-card-category">{video.category}</span>
+                        <h4 className="explore-card-title">{video.title}</h4>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      }
+
       case 'profile': {
         const savedCount = Object.keys(bookmarkedVideos).length;
         const profileVideos = profileActiveTab === 'saved'
           ? videos.filter((v) => !!bookmarkedVideos[v.id])
-          : videos;
+          : videos.filter((v) => v.creator?.id === user?.id);
 
         return (
           <div style={styles.profileView} className="comment-list-scroll">
@@ -278,13 +565,39 @@ export default function Feed() {
               <div style={styles.igHeaderLeft}>
                 <Lock size={12} color="#ffffff" style={{ marginRight: '4px' }} />
                 <span style={styles.igUsername}>
-                  {user?.name ? user.name.toLowerCase().replace(/\s+/g, '_') : 'developer_learner'}
+                  {user?.username ? user.username.toLowerCase() : 'developer_learner'}
                 </span>
                 <ChevronDown size={12} color="#ffffff" style={{ marginLeft: '4px' }} />
               </div>
               <div style={styles.igHeaderRight}>
                 <button style={styles.igHeaderBtn} onClick={() => setIsUploadOpen(true)}>
                   <Plus size={20} color="#ffffff" />
+                </button>
+                <button 
+                  style={{ ...styles.igHeaderBtn, position: 'relative' }} 
+                  onClick={() => setIsNotificationsOpen(true)}
+                >
+                  <Bell size={20} color="#ffffff" />
+                  {requests && requests.length > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '-2px',
+                      right: '-2px',
+                      backgroundColor: '#ff4757',
+                      color: '#ffffff',
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      borderRadius: '50%',
+                      width: '14px',
+                      height: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                    }}>
+                      {requests.length}
+                    </span>
+                  )}
                 </button>
                 <button style={styles.igHeaderBtn} onClick={handleLogout}>
                   <LogOut size={18} color="#ffffff" />
@@ -308,20 +621,20 @@ export default function Feed() {
                   <span style={styles.igStatNum}>{videos.length}</span>
                   <span style={styles.igStatLabel}>Posts</span>
                 </div>
-                <div style={styles.igStatCol} onClick={() => setProfileActiveTab('saved')}>
-                  <span style={styles.igStatNum}>{savedCount}</span>
-                  <span style={styles.igStatLabel}>Saved</span>
+                <div style={styles.igStatCol} onClick={() => setIsFollowersOpen(true)}>
+                  <span style={styles.igStatNum}>{followers.length}</span>
+                  <span style={styles.igStatLabel}>Followers</span>
                 </div>
-                <div style={styles.igStatCol}>
-                  <span style={styles.igStatNum}>{savedCount * 50 + 100}</span>
-                  <span style={styles.igStatLabel}>XP</span>
+                <div style={styles.igStatCol} onClick={() => setIsFollowingOpen(true)}>
+                  <span style={styles.igStatNum}>{following.length}</span>
+                  <span style={styles.igStatLabel}>Following</span>
                 </div>
               </div>
             </div>
 
             {/* Bio Block */}
             <div style={styles.igBioContainer}>
-              <h3 style={styles.igDisplayName}>{user?.name || 'Developer Learner'}</h3>
+              <h3 style={styles.igDisplayName}>{user?.username || 'Developer Learner'}</h3>
               <span style={styles.igCategory}>Education Website</span>
               <p style={styles.igBioText}>
                 🚀 Continuous learning, one 30-second snippet at a time.<br />
@@ -354,19 +667,13 @@ export default function Feed() {
                 </div>
                 <span style={styles.igHighlightLabel}>React</span>
               </div>
-              <div style={styles.igHighlightItem} onClick={() => alert('XP Milestone Highlights')}>
-                <div style={styles.igHighlightCircle}>
-                  <Award size={18} color="#ffffff" />
-                </div>
-                <span style={styles.igHighlightLabel}>XP</span>
-              </div>
               <div style={styles.igHighlightItem} onClick={() => setActiveTab('explore')}>
                 <div style={styles.igHighlightCircle}>
                   <Search size={18} color="#ffffff" />
                 </div>
                 <span style={styles.igHighlightLabel}>Explore</span>
               </div>
-              <div style={styles.igHighlightItem} onClick={() => alert('Bookmarks collection')}>
+              <div style={styles.igHighlightItem} onClick={() => setProfileActiveTab('saved')}>
                 <div style={styles.igHighlightCircle}>
                   <Bookmark size={18} color="#ffffff" />
                 </div>
@@ -410,10 +717,56 @@ export default function Feed() {
 
             {/* Grid media container */}
             {profileVideos.length === 0 ? (
-              <div style={styles.igEmptyGrid}>
-                <span style={styles.igEmptyGridText}>
-                  {profileActiveTab === 'saved' ? 'No Saved Items' : 'No posts yet'}
-                </span>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '64px 24px',
+                textAlign: 'center',
+                gap: '16px'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  border: '2px dashed rgba(255,255,255,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'rgba(255,255,255,0.3)'
+                }}>
+                  {profileActiveTab === 'saved' ? <Bookmark size={28} /> : <Film size={28} />}
+                </div>
+                <div>
+                  <h4 style={{ color: '#ffffff', fontSize: '15px', fontWeight: '700', margin: '0 0 6px 0' }}>
+                    {profileActiveTab === 'saved' ? 'No Saved Lessons' : 'No Video Lessons Published'}
+                  </h4>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', maxWidth: '240px', margin: '0 auto' }}>
+                    {profileActiveTab === 'saved' 
+                      ? 'Lessons you bookmark will appear here in your saved collection.' 
+                      : 'Share your knowledge with others by publishing your first short-video lesson!'}
+                  </p>
+                </div>
+                {profileActiveTab !== 'saved' && (
+                  <button
+                    onClick={() => setIsUploadOpen(true)}
+                    style={{
+                      marginTop: '8px',
+                      background: 'linear-gradient(135deg, #6c63ff 0%, #ff4757 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 20px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                    }}
+                  >
+                    Upload Video Lesson
+                  </button>
+                )}
               </div>
             ) : (
               <div style={styles.igMediaGrid}>
@@ -469,7 +822,315 @@ export default function Feed() {
     }
   };
 
-  const showHeader = activeTab === 'home' || activeTab === 'saved';
+  const renderNotificationsModal = () => {
+    if (!isNotificationsOpen) return null;
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+        onClick={() => setIsNotificationsOpen(false)}
+      >
+        <div
+          style={{
+            backgroundColor: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '360px',
+            maxHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid #1a1a1a',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <h3 style={{
+              color: '#ffffff',
+              fontSize: '16px',
+              fontWeight: '700',
+              margin: 0
+            }}>Notifications</h3>
+            <button style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+            }} onClick={() => setIsNotificationsOpen(false)}>
+              <X size={20} color="#ffffff" />
+            </button>
+          </div>
+          
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '8px 16px',
+          }} className="comment-list-scroll">
+            <h4 style={{
+              fontSize: '12px',
+              color: 'rgba(255, 255, 255, 0.5)',
+              margin: '8px 0 16px 0',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>Follow Requests</h4>
+            {requests.length === 0 ? (
+              <div style={{
+                color: 'rgba(255, 255, 255, 0.4)',
+                fontSize: '13px',
+                textAlign: 'center',
+                padding: '32px 16px',
+              }}>
+                No new follow requests.
+              </div>
+            ) : (
+              requests.map((reqUser) => (
+                <div key={reqUser.id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: '1px solid #121212',
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}>
+                    <img src={reqUser.avatar} alt={reqUser.username} style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                    }} />
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}>
+                      <span style={{
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                      }}>@{reqUser.username}</span>
+                      <span style={{
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        fontSize: '11px',
+                      }}>{reqUser.name}</span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={() => dispatch(acceptFollowRequest(reqUser.id))}
+                      style={{
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        border: 'none',
+                        backgroundColor: '#6c63ff',
+                        color: '#ffffff',
+                      }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => dispatch(rejectFollowRequest(reqUser.id))}
+                      style={{
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderNetworkModal = (type) => {
+    const isOpen = type === 'followers' ? isFollowersOpen : isFollowingOpen;
+    const setIsOpen = type === 'followers' ? setIsFollowersOpen : setIsFollowingOpen;
+    const list = type === 'followers' ? followers : following;
+    const title = type === 'followers' ? 'Followers' : 'Following';
+
+    if (!isOpen) return null;
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+        onClick={() => setIsOpen(false)}
+      >
+        <div
+          style={{
+            backgroundColor: '#0a0a0a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '360px',
+            maxHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{
+            padding: '16px',
+            borderBottom: '1px solid #1a1a1a',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <h3 style={{
+              color: '#ffffff',
+              fontSize: '16px',
+              fontWeight: '700',
+              margin: 0
+            }}>{title}</h3>
+            <button style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+            }} onClick={() => setIsOpen(false)}>
+              <X size={20} color="#ffffff" />
+            </button>
+          </div>
+          
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '8px 16px',
+          }} className="comment-list-scroll">
+            {list.length === 0 ? (
+              <div style={{
+                color: 'rgba(255, 255, 255, 0.4)',
+                fontSize: '13px',
+                textAlign: 'center',
+                padding: '32px 16px',
+              }}>
+                No users found.
+              </div>
+            ) : (
+              list.map((u) => {
+                const fState = getFollowState(u.id, u.is_following);
+                const isUserFollowing = fState === 'following';
+                const isUserRequested = fState === 'requested';
+                const btnLabel = isUserFollowing ? 'Following' : (isUserRequested ? 'Requested' : 'Follow');
+                return (
+                  <div key={u.id} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 0',
+                    borderBottom: '1px solid #121212',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                    }}>
+                      <img src={u.avatar} alt={u.username} style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                      }} />
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}>
+                        <span style={{
+                          color: '#ffffff',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                        }}>@{u.username}</span>
+                        <span style={{
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontSize: '11px',
+                        }}>{u.name}</span>
+                      </div>
+                    </div>
+                    
+                    {user?.id !== u.id && (
+                      <button
+                        onClick={() => dispatch(toggleFollowUser(u.id))}
+                        style={{
+                          borderRadius: '6px',
+                          padding: '5px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          transition: 'all 0.2s ease',
+                          backgroundColor: isUserFollowing 
+                            ? 'rgba(255, 255, 255, 0.1)' 
+                            : (isUserRequested 
+                                ? 'rgba(255, 255, 255, 0.05)' 
+                                : '#6c63ff'),
+                          color: isUserFollowing ? 'rgba(255,255,255,0.6)' : (isUserRequested ? 'rgba(255,255,255,0.5)' : '#ffffff'),
+                          border: (isUserFollowing || isUserRequested) ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                        }}
+                      >
+                        {btnLabel}
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const showHeader = activeTab === 'home';
 
   return (
     <div style={styles.feedWrapper}>
@@ -541,7 +1202,7 @@ export default function Feed() {
       )}
 
       {/* Main Content Area */}
-      <div style={styles.mainContentContainer}>
+      <div className="main-content-area" style={styles.mainContentContainer}>
         {renderContent()}
       </div>
 
@@ -550,22 +1211,25 @@ export default function Feed() {
       {/* Upload Modal Overlay */}
       <AnimatePresence>
         {isUploadOpen && (
-          <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={styles.modalWrapper}
+          >
             {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <div
               onClick={() => setIsUploadOpen(false)}
               style={styles.modalBackdrop}
             />
 
             {/* Modal Box */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="comment-list-scroll"
               style={styles.modalContent}
             >
               <div style={styles.modalHeader}>
@@ -619,18 +1283,53 @@ export default function Feed() {
 
                 <div style={styles.modalFieldGroup}>
                   <label style={styles.modalLabel}>Select Video Lesson File</label>
-                  <select
-                    value={uploadFilePath}
-                    onChange={(e) => setUploadFilePath(e.target.value)}
-                    style={styles.modalSelect}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="video/*"
+                    style={{ display: 'none' }}
+                  />
+                  
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={triggerFileInput}
+                    style={{
+                      ...styles.dragDropZone,
+                      borderColor: isDragging ? '#6c63ff' : 'rgba(255,255,255,0.15)',
+                      backgroundColor: isDragging ? 'rgba(108, 99, 255, 0.1)' : 'rgba(255,255,255,0.03)',
+                    }}
                   >
-                    <option value="/uploads/Introduction_German.mp4">Introduction_German.mp4</option>
-                    <option value="/uploads/Learning_German.mp4">Learning_German.mp4</option>
-                    <option value="/uploads/Story_German.mp4">Story_German.mp4</option>
-                  </select>
-                  <span style={styles.modalHelperText}>
-                    Selects one of the physical media files located inside backend/uploads/ folder.
-                  </span>
+                    {selectedFile ? (
+                      <div style={styles.selectedFileContainer}>
+                        <Film size={28} color="#6c63ff" />
+                        <div style={styles.selectedFileMeta}>
+                          <span style={styles.selectedFileName}>{selectedFile.name}</span>
+                          <span style={styles.selectedFileSize}>
+                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(null);
+                          }}
+                          style={styles.removeFileBtn}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={styles.dropZonePlaceholder}>
+                        <UploadCloud size={28} color="rgba(255,255,255,0.4)" style={{ marginBottom: '8px' }} />
+                        <span style={styles.dropZoneMainText}>Drag & drop video here</span>
+                        <span style={styles.dropZoneSubText}>or click to browse files</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <button type="submit" style={styles.modalSubmitBtn}>
@@ -638,9 +1337,22 @@ export default function Feed() {
                 </button>
               </form>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {renderNotificationsModal()}
+      {renderNetworkModal('followers')}
+      {renderNetworkModal('following')}
+
+      {/* Quick Access Panel – right side on desktop, bottom on mobile */}
+      <QuickAccessPanel
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onUpload={() => setIsUploadOpen(true)}
+        pendingRequestsCount={requests.length}
+        onNotificationsOpen={() => setIsNotificationsOpen(true)}
+      />
     </div>
   );
 }
@@ -1021,6 +1733,18 @@ const styles = {
     outline: 'none',
     transition: 'background-color 0.2s',
   },
+  modalWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 300,
+    padding: '20px',
+  },
   modalBackdrop: {
     position: 'absolute',
     top: 0,
@@ -1029,22 +1753,20 @@ const styles = {
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     backdropFilter: 'blur(4px)',
-    zIndex: 300,
+    zIndex: 1,
   },
   modalContent: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 'calc(100% - 40px)',
+    width: '100%',
     maxWidth: '380px',
+    maxHeight: '100%',
+    overflowY: 'auto',
     backgroundColor: '#1a1a1a',
     borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.08)',
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',
-    zIndex: 310,
+    zIndex: 2,
     boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
   },
   modalHeader: {
@@ -1130,5 +1852,76 @@ const styles = {
     outline: 'none',
     marginTop: '6px',
     boxShadow: '0 4px 12px rgba(108, 99, 255, 0.25)',
+  },
+  exploreView: {
+    flex: 1,
+    height: 'calc(100% - 56px)',
+    backgroundColor: '#000000',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowY: 'auto',
+    paddingBottom: '24px',
+  },
+  exploreHeader: {
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    position: 'sticky',
+    top: 0,
+    backgroundColor: '#000000',
+    zIndex: 10,
+  },
+  exploreTitle: {
+    fontSize: '18px',
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  exploreSearchContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: '#161616',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '10px',
+    padding: '10px 14px',
+  },
+  exploreSearchInput: {
+    background: 'none',
+    border: 'none',
+    outline: 'none',
+    color: '#ffffff',
+    fontSize: '13px',
+    width: '100%',
+  },
+  exploreCategoriesScroll: {
+    display: 'flex',
+    gap: '8px',
+    overflowX: 'auto',
+    padding: '0 16px 16px 16px',
+    scrollbarWidth: 'none',
+    borderBottom: '1px solid #121212',
+    flexShrink: 0,
+  },
+  exploreCategoryBtn: {
+    border: '1px solid',
+    borderRadius: '20px',
+    padding: '6px 14px',
+    fontSize: '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    outline: 'none',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.2s ease',
+  },
+  exploreGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '12px',
+    padding: '16px',
+    backgroundColor: '#000000',
+  },
+  exploreEmpty: {
+    padding: '48px 16px',
+    textAlign: 'center',
   },
 };

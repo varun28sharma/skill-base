@@ -7,6 +7,7 @@ import ActionButtons from './ActionButtons';
 import CommentSheet from './CommentSheet';
 import { toggleLikeVideo, toggleBookmarkVideo } from '../redux/interactionsSlice';
 import { addComment } from '../redux/videosSlice';
+import { toggleFollowUser } from '../redux/networkSlice';
 
 export default function VideoCard({ video, isActiveCard }) {
   const videoRef = useRef(null);
@@ -14,19 +15,27 @@ export default function VideoCard({ video, isActiveCard }) {
   
   const dispatch = useDispatch();
 
-  // State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [progress, setProgress] = useState(0);
   const [showPlayIndicator, setShowPlayIndicator] = useState(null); // 'play' | 'pause' | null
   const [isCommentOpen, setIsCommentOpen] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
 
   // Redux state
   const likedVideos = useSelector((state) => state.interactions.likedVideos);
   const bookmarkedVideos = useSelector((state) => state.interactions.bookmarkedVideos);
+  const followStatuses = useSelector((state) => state.network.followStatuses);
+  const currentUser = useSelector((state) => state.auth.user);
+
   const isLiked = !!likedVideos[video.id];
   const isBookmarked = !!bookmarkedVideos[video.id];
+
+  // Resolve creator follow status
+  const followStatus = followStatuses[video.creator?.id] || (video.creator?.isFollowing === 'requested' ? 'requested' : (video.creator?.isFollowing === true ? 'following' : 'none'));
+  const isFollowing = followStatus === 'following';
+  const isRequested = followStatus === 'requested';
+
+  const isOwnVideo = currentUser && video.creator && currentUser.id === video.creator.id;
 
   // Handle Autoplay via hook and active card prop
   useEffect(() => {
@@ -152,19 +161,24 @@ export default function VideoCard({ video, isActiveCard }) {
                 e.target.src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=60';
               }}
             />
-            <span style={styles.username}>@{video.creator.username}</span>
-            <button
-              onClick={() => setIsFollowing(!isFollowing)}
-              style={{
-                ...styles.followBtn,
-                borderColor: isFollowing ? 'rgba(255,255,255,0.3)' : '#6c63ff',
-                backgroundColor: isFollowing ? 'transparent' : 'rgba(108, 99, 255, 0.1)',
-                color: isFollowing ? 'rgba(255,255,255,0.6)' : '#ffffff',
-              }}
-            >
-              {!isFollowing && <Plus size={10} style={{ marginRight: '2px' }} />}
-              {isFollowing ? 'Following' : 'Follow'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', textShadow: '0 1px 2px rgba(0, 0, 0, 0.6)' }}>{video.creator.name}</span>
+              <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.7)', textShadow: '0 1px 2px rgba(0, 0, 0, 0.6)' }}>@{video.creator.username}</span>
+            </div>
+            {!isOwnVideo && (
+              <button
+                onClick={() => dispatch(toggleFollowUser(video.creator?.id))}
+                style={{
+                  ...styles.followBtn,
+                  borderColor: isFollowing ? 'rgba(255,255,255,0.3)' : (isRequested ? 'rgba(255,255,255,0.2)' : '#6c63ff'),
+                  backgroundColor: isFollowing ? 'transparent' : (isRequested ? 'rgba(255,255,255,0.05)' : 'rgba(108, 99, 255, 0.1)'),
+                  color: isFollowing ? 'rgba(255,255,255,0.6)' : (isRequested ? 'rgba(255,255,255,0.5)' : '#ffffff'),
+                }}
+              >
+                {!isFollowing && !isRequested && <Plus size={10} style={{ marginRight: '2px' }} />}
+                {isFollowing ? 'Following' : (isRequested ? 'Requested' : 'Follow')}
+              </button>
+            )}
           </div>
 
           {/* Video Title & Description */}

@@ -11,6 +11,10 @@ const runInit = async () => {
     
     // Run all DDL commands in schema.sql
     await db.query(schemaSql);
+    
+    // Migrate: add user_id to videos table if it was created previously without it
+    await db.query('ALTER TABLE videos ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE');
+    
     console.log('Database schema initialized successfully. All tables, indexes, and extensions created.');
   } catch (err) {
     console.error('Failed to initialize database schema:', err);

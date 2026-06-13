@@ -57,7 +57,9 @@ body {
   width: 100vw;
   height: 100vh;
   background-color: #000000;
+  /* Auth pages fill the full root, feed shell centers inside */
 }
+
 
 .app-shell {
   width: 100%;
@@ -78,6 +80,25 @@ body {
     border-left: none;
     border-right: none;
     box-shadow: none;
+  }
+}
+
+/* On real mobile screens (not the desktop phone simulator),
+   hide the old navbar so the QuickAccessPanel mobile bar takes over */
+@media (max-width: 599px) {
+  .app-navbar {
+    display: none !important;
+  }
+  /* Reclaim the bottom padding space that was reserved for the NavBar */
+  .app-shell > div[style] {
+    padding-bottom: 56px;
+  }
+}
+
+/* Desktop: subtle ambient glow behind the app shell so the layout breathes */
+@media (min-width: 600px) {
+  #root {
+    background: radial-gradient(ellipse at center, #0d0d18 0%, #000000 70%);
   }
 }
 

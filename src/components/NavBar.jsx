@@ -1,15 +1,15 @@
 import React from 'react';
-import { Home, Bookmark, User } from 'lucide-react';
+import { Home, Compass, User } from 'lucide-react';
 
 export default function NavBar({ activeTab, setActiveTab }) {
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'saved', label: 'Saved', icon: Bookmark },
+    { id: 'explore', label: 'Explore', icon: Compass },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
-    <div style={styles.navBar}>
+    <div className="app-navbar" style={styles.navBar}>
       {navItems.map((item) => {
         const IconComponent = item.icon;
         const isActive = activeTab === item.id;

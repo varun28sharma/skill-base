@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const authRoutes = require('./src/routes/auth');
 const videoRoutes = require('./src/routes/videos');
+const usersRoutes = require('./src/routes/users');
 const errorHandler = require('./src/middlewares/errorHandler');
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount routes
 app.use('/auth', authRoutes);
 app.use('/videos', videoRoutes);
+app.use('/users', usersRoutes);
 
 // Register centralized error handler last (signature with 4 parameters is loaded inside errorHandler)
 app.use(errorHandler);

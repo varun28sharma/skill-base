@@ -22,9 +22,19 @@ export const fetchVideos = createAsyncThunk(
 
 export const createVideo = createAsyncThunk(
   'videos/createVideo',
-  async (videoData, { rejectWithValue }) => {
+  async ({ title, description, category, file }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/videos', videoData);
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('category', category);
+      formData.append('video', file); // 'video' matches upload.single('video') on backend
+
+      const response = await api.post('/videos', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data; // Expected mapped video object
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to create video');
