@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #0a0a0a;
+  --card-color: #111111;
+  --surface-color: #1a1a1a;
+  --accent-color: #6c63ff;
+  --accent-hover: #5850e6;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+  --border-radius-card: 12px;
+  --border-radius-sheet: 20px;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --like-color: #ff4757;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background-color: #000000;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 14px;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+/* Base Headings & Typography */
+h1, h2, h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.label-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Main App Shell Layout */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  background-color: var(--bg-color);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  border-left: 1px solid #1f1f1f;
+  border-right: 1px solid #1f1f1f;
+}
+
+@media (max-width: 430px) {
+  .app-shell {
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
+}
+
+/* Snap Scroll Feed Container */
+.feed-container {
+  flex: 1;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+/* Hide scrollbar for feed container */
+.feed-container::-webkit-scrollbar {
+  display: none;
+}
+.feed-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Scroll snap card item */
+.video-card-snap {
+  height: 100%;
+  width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inputs & Form Elements */
+.input-group {
+  width: 100%;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  background-color: var(--surface-color);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 14px 14px 14px 44px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--accent-color);
+}
+
+.input-icon-prefix {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--accent-color);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Utility Animations & Transitions */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 2s linear infinite;
+}
+
+/* Custom overlay styles */
+.gradient-overlay-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gradient-overlay-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.4) 50%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Google Auth Divider & Button */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.auth-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: #222222;
+}
+
+.auth-divider-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: transparent;
+  border: 1px solid #222222;
+  color: #ffffff;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px;
+  cursor: pointer;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-google:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
