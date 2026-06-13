@@ -124,17 +124,10 @@ export default function Login() {
   const navigate = useNavigate();
   const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    if (isAuthenticated) navigate('/');
-  }, [isAuthenticated, navigate]);
+  useEffect(() => { if (isAuthenticated) navigate('/'); }, [isAuthenticated, navigate]);
+  useEffect(() => { dispatch(clearError()); }, [dispatch]);
 
-  useEffect(() => {
-    dispatch(clearError());
-  }, [dispatch]);
-
-  const handleGoogleSignIn = () => {
-    dispatch(loginWithGoogle());
-  };
+  const handleGoogleSignIn = () => dispatch(loginWithGoogle());
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -218,20 +211,7 @@ export default function Login() {
           </motion.div>
         </motion.div>
 
-        {/* Bottom stat bar */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9, duration: 0.5 }}
-          style={S.statsRow}
-        >
-          {[['12K+', 'Lessons'], ['4.8K', 'Creators'], ['98%', 'Satisfaction']].map(([val, label]) => (
-            <div key={label} style={S.statItem}>
-              <span style={S.statVal}>{val}</span>
-              <span style={S.statLabel}>{label}</span>
-            </div>
-          ))}
-        </motion.div>
+
       </div>
 
       {/* ── RIGHT: Login Form Panel ── */}
@@ -325,13 +305,17 @@ export default function Login() {
             disabled={loading}
             style={S.googleBtn}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" style={{ flexShrink: 0 }}>
-              <path fill="#ea4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.355 0 3.309 2.69 1.255 6.627l4.01 3.138z" />
-              <path fill="#34a853" d="M16.04 15.341c-1.07.727-2.437 1.159-4.04 1.159a7.07 7.07 0 0 1-6.734-4.856L1.256 14.78C3.31 18.718 7.355 21.4 12 21.4c3.09 0 5.864-1.018 7.827-2.773l-3.787-3.286z" />
-              <path fill="#4285f4" d="M23.49 12.273c0-.818-.073-1.609-.209-2.373H12v4.5h6.473a5.533 5.533 0 0 1-2.4 3.627l3.787 3.286c2.213-2.036 3.63-5.036 3.63-8.77l.001-.27z" />
-              <path fill="#fbbc05" d="M5.266 14.235A7.02 7.02 0 0 1 4.909 12c0-.791.136-1.555.357-2.264L1.256 6.627A11.917 11.917 0 0 0 0 12c0 1.927.455 3.745 1.255 5.373l4.011-3.138z" />
-            </svg>
-            Continue with Google
+            {loading ? (
+              <Loader size={15} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <svg viewBox="0 0 24 24" width="16" height="16" style={{ flexShrink: 0 }}>
+                <path fill="#ea4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.355 0 3.309 2.69 1.255 6.627l4.01 3.138z" />
+                <path fill="#34a853" d="M16.04 15.341c-1.07.727-2.437 1.159-4.04 1.159a7.07 7.07 0 0 1-6.734-4.856L1.256 14.78C3.31 18.718 7.355 21.4 12 21.4c3.09 0 5.864-1.018 7.827-2.773l-3.787-3.286z" />
+                <path fill="#4285f4" d="M23.49 12.273c0-.818-.073-1.609-.209-2.373H12v4.5h6.473a5.533 5.533 0 0 1-2.4 3.627l3.787 3.286c2.213-2.036 3.63-5.036 3.63-8.77l.001-.27z" />
+                <path fill="#fbbc05" d="M5.266 14.235A7.02 7.02 0 0 1 4.909 12c0-.791.136-1.555.357-2.264L1.256 6.627A11.917 11.917 0 0 0 0 12c0 1.927.455 3.745 1.255 5.373l4.011-3.138z" />
+              </svg>
+            )}
+            {loading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
           {/* Create account */}
@@ -666,5 +650,138 @@ const S = {
     fontSize: '11px',
     color: 'rgba(255,255,255,0.25)',
     letterSpacing: '0.2px',
+  },
+  // Google sign-in modal
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.65)',
+    backdropFilter: 'blur(6px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modal: {
+    background: 'rgba(22,22,34,0.96)',
+    border: '1px solid rgba(108,99,255,0.3)',
+    borderRadius: '20px',
+    padding: '32px 28px 28px',
+    width: '320px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '12px',
+    boxShadow: '0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+  },
+  modalIcon: {
+    width: '54px',
+    height: '54px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '4px',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: '17px',
+    fontWeight: '700',
+    margin: 0,
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+  modalSub: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: '12px',
+    margin: 0,
+    textAlign: 'center',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    marginBottom: '4px',
+  },
+  modalInput: {
+    width: '100%',
+    height: '42px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '10px',
+    color: '#fff',
+    fontSize: '13px',
+    padding: '0 14px',
+    outline: 'none',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    boxSizing: 'border-box',
+  },
+  modalBtn: {
+    width: '100%',
+    height: '42px',
+    background: 'linear-gradient(135deg, #6c63ff, #a78bfa)',
+    border: 'none',
+    borderRadius: '10px',
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    marginTop: '2px',
+    transition: 'opacity 0.2s',
+  },
+  // User picker (Google sign-in)
+  userPickerWrap: {
+    width: '100%',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    marginBottom: '10px',
+  },
+  userPickerLabel: {
+    fontSize: '11px',
+    color: 'rgba(255,255,255,0.4)',
+    margin: '0 0 4px 2px',
+    fontWeight: '600',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+  userPickerBtn: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 10px',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+    textAlign: 'left',
+  },
+  userPickerAvatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #6c63ff, #a78bfa)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#fff',
+    flexShrink: 0,
+  },
+  userPickerCancel: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: '12px',
+    cursor: 'pointer',
+    textAlign: 'center',
+    padding: '4px 0 0',
+    fontFamily: 'Inter, system-ui, sans-serif',
   },
 };

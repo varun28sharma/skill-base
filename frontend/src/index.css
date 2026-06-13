@@ -13,6 +13,7 @@
   --border-radius-sheet: 20px;
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --like-color: #ff4757;
+  --mobile-nav-height: 0px;
 }
 
 * {
@@ -83,15 +84,10 @@ body {
   }
 }
 
-/* On real mobile screens (not the desktop phone simulator),
-   hide the old navbar so the QuickAccessPanel mobile bar takes over */
+/* On real mobile screens, define the nav height so UI elements can shift up */
 @media (max-width: 599px) {
-  .app-navbar {
-    display: none !important;
-  }
-  /* Reclaim the bottom padding space that was reserved for the NavBar */
-  .app-shell > div[style] {
-    padding-bottom: 56px;
+  :root {
+    --mobile-nav-height: 52px;
   }
 }
 

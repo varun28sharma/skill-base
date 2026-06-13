@@ -34,23 +34,7 @@ const register = async (email, username, password) => {
       RETURNING id, email, username
     `;
     const insertRes = await db.query(insertQuery, [email, username, passwordHash]);
-    const newUser = insertRes.rows[0];
-
-    // Generate JWT immediately so frontend can log the user in right after registration
-    const token = jwt.sign(
-      { userId: newUser.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    return {
-      token,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        username: newUser.username,
-      }
-    };
+    return insertRes.rows[0];
   } catch (err) {
     if (!err.status) {
       if (err.code === '23505') {

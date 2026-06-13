@@ -22,13 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# ── SECRETS — never commit these ──
-.env
-.env.local
-.env.production
-backend/.env
-
-# ── Uploaded video files (too large for git) ──
-backend/uploads/*
-!backend/uploads/.gitkeep

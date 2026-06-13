@@ -111,7 +111,7 @@ const styles = {
   actionsColumn: {
     position: 'absolute',
     right: '12px',
-    bottom: '60px',
+    bottom: 'calc(60px + var(--mobile-nav-height, 0px))',
     display: 'flex',
     flexDirection: 'column',
     gap: '18px',

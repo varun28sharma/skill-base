@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchVideos, setCurrentIndex, createVideo } from '../redux/videosSlice';
 import { fetchNetwork, toggleFollowUser, acceptFollowRequest, rejectFollowRequest } from '../redux/networkSlice';
 import VideoCard from '../components/VideoCard';
-import NavBar from '../components/NavBar';
 import Skeleton from '../components/Skeleton';
 import QuickAccessPanel from '../components/QuickAccessPanel';
 import { logout } from '../redux/authSlice';
@@ -507,6 +506,7 @@ export default function Feed() {
 
       case 'profile': {
         const savedCount = Object.keys(bookmarkedVideos).length;
+        const userVideosCount = videos.filter((v) => v.creator?.id === user?.id).length;
         const profileVideos = profileActiveTab === 'saved'
           ? videos.filter((v) => !!bookmarkedVideos[v.id])
           : videos.filter((v) => v.creator?.id === user?.id);
@@ -618,7 +618,7 @@ export default function Feed() {
               </div>
               <div style={styles.igStatsContainer}>
                 <div style={styles.igStatCol}>
-                  <span style={styles.igStatNum}>{videos.length}</span>
+                  <span style={styles.igStatNum}>{userVideosCount}</span>
                   <span style={styles.igStatLabel}>Posts</span>
                 </div>
                 <div style={styles.igStatCol} onClick={() => setIsFollowersOpen(true)}>
@@ -1206,8 +1206,6 @@ export default function Feed() {
         {renderContent()}
       </div>
 
-      <NavBar activeTab={activeTab} setActiveTab={setActiveTab} />
-
       {/* Upload Modal Overlay */}
       <AnimatePresence>
         {isUploadOpen && (
@@ -1457,7 +1455,6 @@ const styles = {
     height: '100%',
     overflow: 'hidden',
     position: 'relative',
-    paddingBottom: '56px',
   },
   emptyContainer: {
     flex: 1,
@@ -1923,5 +1920,72 @@ const styles = {
   exploreEmpty: {
     padding: '48px 16px',
     textAlign: 'center',
+  },
+  dragDropZone: {
+    border: '2px dashed',
+    borderRadius: '12px',
+    padding: '32px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  dropZonePlaceholder: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  dropZoneMainText: {
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: '600',
+    marginTop: '8px',
+  },
+  dropZoneSubText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '11px',
+    marginTop: '4px',
+  },
+  selectedFileContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+    border: '1px solid rgba(108, 99, 255, 0.2)',
+    padding: '12px 16px',
+    borderRadius: '10px',
+    width: '100%',
+  },
+  selectedFileMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  selectedFileName: {
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  selectedFileSize: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '11px',
+    marginTop: '2px',
+  },
+  removeFileBtn: {
+    background: 'rgba(255, 71, 87, 0.15)',
+    color: '#ff4757',
+    border: '1px solid rgba(255, 71, 87, 0.3)',
+    borderRadius: '6px',
+    padding: '6px 10px',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    outline: 'none',
   },
 };

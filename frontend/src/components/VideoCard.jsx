@@ -331,7 +331,7 @@ const styles = {
   },
   bottomOverlay: {
     position: 'absolute',
-    bottom: '4px', // Positioned right above the progress bar line at the bottom
+    bottom: 'calc(4px + var(--mobile-nav-height, 0px))', // Positioned right above the progress bar line at the bottom
     left: 0,
     right: 0,
     padding: '20px 70px 8px 16px', // Clean compact padding
@@ -439,7 +439,7 @@ const styles = {
   musicDiscWrapper: {
     position: 'absolute',
     right: '16px',
-    bottom: '10px', // Lowered closer to bottom to align with sound marquee
+    bottom: 'calc(10px + var(--mobile-nav-height, 0px))', // Lowered closer to bottom to align with sound marquee
     zIndex: 100,
   },
   musicDisc: {
@@ -461,7 +461,7 @@ const styles = {
   },
   progressTrack: {
     position: 'absolute',
-    bottom: 0, // Lowered to the very bottom of the card
+    bottom: 'var(--mobile-nav-height, 0px)', // Lowered to the very bottom of the card, above nav bar on mobile
     left: 0,
     right: 0,
     height: '2px',

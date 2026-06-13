@@ -336,7 +336,7 @@ export default function QuickAccessPanel({
           right: 0;
           z-index: 9999;
           justify-content: center;
-          padding: 0 8px env(safe-area-inset-bottom, 0);
+          padding: 0;
           pointer-events: none;
         }
 
@@ -354,7 +354,7 @@ export default function QuickAccessPanel({
           -webkit-backdrop-filter: blur(20px);
           border-top: 1px solid rgba(255, 255, 255, 0.07);
           border-radius: 0;
-          padding: 6px 8px;
+          padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
           width: 100%;
           max-width: 430px;
           box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
