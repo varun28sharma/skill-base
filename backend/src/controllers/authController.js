@@ -5,8 +5,8 @@ const register = async (req, res) => {
   const { email, password } = req.body;
   // Fallback to name if username is not provided (frontend registers with name)
   const username = req.body.username || req.body.name;
-  const user = await authService.register(email, username, password);
-  return sendSuccess(res, { user }, 201);
+  const result = await authService.register(email, username, password);
+  return sendSuccess(res, result, 201); // result = { user, token }
 };
 
 const login = async (req, res) => {
